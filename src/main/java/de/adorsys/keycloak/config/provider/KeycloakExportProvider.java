@@ -58,8 +58,14 @@ public class KeycloakExportProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(KeycloakExportProvider.class);
 
+    // The Keycloak admin client is intentionally version-skewed: its representation classes lag
+    // behind the server, so a realm export from a newer Keycloak carries fields this client does
+    // not know (e.g. maxSecondaryAuthFailures / scimApiEnabled introduced in 26.6). Keycloak's
+    // admin client compatibility guidance requires tolerating unknown properties for exactly this
+    // reason (https://www.keycloak.org/securing-apps/admin-client#_admin_client_compatibility);
+    // failing on them would abort normalization of any export from a server newer than the client.
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
     private final PathMatchingResourcePatternResolver patternResolver;
 

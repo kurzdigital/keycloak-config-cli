@@ -6,7 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+### Added
+- Add support for Keycloak 26.6 (CI matrix entry 26.6.4 and normalization baseline).
+
 ### Fixed
+- Normalization now tolerates realm-export fields the pinned admin client does not model yet (e.g. `maxSecondaryAuthFailures`, `scimApiEnabled` introduced in Keycloak 26.6). The export reader and baseline loader previously failed on unknown properties, aborting normalization of any export from a Keycloak newer than the client; they now follow Keycloak's [admin client compatibility guidance](https://www.keycloak.org/securing-apps/admin-client#_admin_client_compatibility) and ignore unknown fields.
 - Fix Keycloak FGAP version detection using wrong feature names [#1610](https://github.com/adorsys/keycloak-config-cli/issues/1610)
 
 ## [6.5.1] - 2026-05-22

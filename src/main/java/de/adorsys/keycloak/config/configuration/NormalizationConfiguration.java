@@ -21,6 +21,7 @@
 package de.adorsys.keycloak.config.configuration;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
@@ -82,6 +83,11 @@ public class NormalizationConfiguration {
         var om = new ObjectMapper();
         om.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         om.enable(SerializationFeature.INDENT_OUTPUT);
+        // Baselines are captured from real Keycloak exports and may carry realm fields the pinned
+        // admin client does not model yet (e.g. maxSecondaryAuthFailures on 26.6+). Mirror the
+        // admin client compatibility guidance and tolerate unknown properties so baseline loading
+        // does not break against newer Keycloak versions.
+        om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         return om;
     }
 
