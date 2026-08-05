@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 - Add support for Keycloak 26.7. The default build now targets Keycloak 26.7.0 (server version property, `default-keycloak-version` profile, `.env`, and Docker build arg), and a normalization baseline for 26.7.0 is included.
 
+### Changed
+- Update `keycloak-admin-client` to 26.0.11, which models the realm fields introduced up to Keycloak 26.7 (`webAuthnPolicyResidentKey`, `webAuthnPolicyPasswordlessResidentKey`, `maxSecondaryAuthFailures`, `scimApiEnabled`), so they are imported and normalized instead of being ignored.
+
 ### Fixed
 - Fix Keycloak FGAP version detection using wrong feature names [#1610](https://github.com/adorsys/keycloak-config-cli/issues/1610)
 
