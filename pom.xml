@@ -66,7 +66,7 @@
         <netty.version>4.1.130.Final</netty.version>
 
         <!-- Keycloak server version for testing compatibility -->
-        <keycloak.version>26.7.0</keycloak.version>
+        <keycloak.version>26.7.2</keycloak.version>
         <!-- Keycloak client libraries version (separate release cycle per https://www.keycloak.org/2024/10/release-updates.html) -->
         <!-- Latest client library: 26.0.12, models 26.7 realm fields (webAuthnPolicyResidentKey etc.) -->
         <keycloak.client.version>26.0.12</keycloak.client.version>
@@ -1329,7 +1329,7 @@ import org.keycloak.representations.userprofile.config.UPConfig;</token>
                 </property>
             </activation>
             <properties>
-                <keycloak.version>26.7.0</keycloak.version>
+                <keycloak.version>26.7.2</keycloak.version>
             </properties>
         </profile>
         <profile>
