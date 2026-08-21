@@ -68,8 +68,8 @@
         <!-- Keycloak server version for testing compatibility -->
         <keycloak.version>26.7.0</keycloak.version>
         <!-- Keycloak client libraries version (separate release cycle per https://www.keycloak.org/2024/10/release-updates.html) -->
-        <!-- Latest client library: 26.0.11, models 26.7 realm fields (webAuthnPolicyResidentKey etc.) -->
-        <keycloak.client.version>26.0.11</keycloak.client.version>
+        <!-- Latest client library: 26.0.12, models 26.7 realm fields (webAuthnPolicyResidentKey etc.) -->
+        <keycloak.client.version>26.0.12</keycloak.client.version>
 
         <checkstyle-plugin.version>3.3.1</checkstyle-plugin.version>
         <checkstyle.version>10.17.0</checkstyle.version>
@@ -1340,7 +1340,7 @@ import org.keycloak.representations.userprofile.config.UPConfig;</token>
                 </property>
             </activation>
             <properties>
-                <keycloak.client.version>26.0.8</keycloak.client.version>
+                <keycloak.client.version>26.0.12</keycloak.client.version>
             </properties>
         </profile>
         <!-- Configure the JBoss GA Maven repository -->
