@@ -243,6 +243,11 @@
       "format": "int32",
       "description": "Number of failures before lockout"
     },
+    "maxSecondaryAuthFailures": {
+      "type": "integer",
+      "format": "int32",
+      "description": "Number of failures of the second authentication factor before lockout (Keycloak 26.6+)"
+    },
     "defaultRole": {
       "$ref": "#/definitions/RoleRepresentation",
       "description": "Default role assigned to new users"
@@ -475,6 +480,14 @@
       "type": "boolean",
       "description": "Enable Fine-Grained Admin Permissions (Keycloak 26.2+)"
     },
+    "verifiableCredentialsEnabled": {
+      "type": "boolean",
+      "description": "If true, the OpenID for Verifiable Credential Issuance feature is enabled for the realm"
+    },
+    "scimApiEnabled": {
+      "type": "boolean",
+      "description": "If true, the SCIM API is enabled for the realm (Keycloak 26.7+)"
+    },
     "clientPolicies": {
       "$ref": "#/definitions/ClientPoliciesRepresentation",
       "description": "Client policies configuration"
@@ -575,6 +588,17 @@
       "format": "int32",
       "description": "OTP period in seconds"
     },
+    "otpPolicyCodeReusable": {
+      "type": "boolean",
+      "description": "If true, an OTP code may be reused within its validity window"
+    },
+    "otpSupportedApplications": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "OTP applications supported by the realm's policy (read-only, emitted by realm exports)"
+    },
     "webAuthnPolicyRpEntityName": {
       "type": "string",
       "description": "WebAuthn relying party entity name"
@@ -582,6 +606,26 @@
     "webAuthnPolicyRpId": {
       "type": "string",
       "description": "WebAuthn relying party ID"
+    },
+    "webAuthnPolicyAttestationConveyancePreference": {
+      "type": "string",
+      "description": "WebAuthn attestation conveyance preference (none, indirect, or direct)"
+    },
+    "webAuthnPolicyAuthenticatorAttachment": {
+      "type": "string",
+      "description": "WebAuthn authenticator attachment (platform or cross-platform)"
+    },
+    "webAuthnPolicyRequireResidentKey": {
+      "type": "string",
+      "description": "WebAuthn resident key requirement, legacy form (Yes, No, or not specified)"
+    },
+    "webAuthnPolicyResidentKey": {
+      "type": "string",
+      "description": "WebAuthn resident key requirement (discouraged, preferred, or required)"
+    },
+    "webAuthnPolicyUserVerificationRequirement": {
+      "type": "string",
+      "description": "WebAuthn user verification requirement (discouraged, preferred, or required)"
     },
     "webAuthnPolicySignatureAlgorithms": {
       "type": "array",
@@ -606,6 +650,13 @@
       },
       "description": "Acceptable WebAuthn AAGUIDs"
     },
+    "webAuthnPolicyExtraOrigins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Extra origins accepted by the WebAuthn policy"
+    },
     "webAuthnPolicyPasswordlessRpEntityName": {
       "type": "string",
       "description": "WebAuthn passwordless relying party name"
@@ -613,6 +664,26 @@
     "webAuthnPolicyPasswordlessRpId": {
       "type": "string",
       "description": "WebAuthn passwordless relying party ID"
+    },
+    "webAuthnPolicyPasswordlessAttestationConveyancePreference": {
+      "type": "string",
+      "description": "WebAuthn passwordless attestation conveyance preference (none, indirect, or direct)"
+    },
+    "webAuthnPolicyPasswordlessAuthenticatorAttachment": {
+      "type": "string",
+      "description": "WebAuthn passwordless authenticator attachment (platform or cross-platform)"
+    },
+    "webAuthnPolicyPasswordlessRequireResidentKey": {
+      "type": "string",
+      "description": "WebAuthn passwordless resident key requirement, legacy form (Yes, No, or not specified)"
+    },
+    "webAuthnPolicyPasswordlessResidentKey": {
+      "type": "string",
+      "description": "WebAuthn passwordless resident key requirement (discouraged, preferred, or required)"
+    },
+    "webAuthnPolicyPasswordlessUserVerificationRequirement": {
+      "type": "string",
+      "description": "WebAuthn passwordless user verification requirement (discouraged, preferred, or required)"
     },
     "webAuthnPolicyPasswordlessSignatureAlgorithms": {
       "type": "array",
@@ -637,6 +708,21 @@
       },
       "description": "Acceptable WebAuthn passwordless AAGUIDs"
     },
+    "webAuthnPolicyPasswordlessExtraOrigins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Extra origins accepted by the WebAuthn passwordless policy"
+    },
+    "webAuthnPolicyPasswordlessPasskeysEnabled": {
+      "type": "boolean",
+      "description": "If true, passwordless WebAuthn passkeys are enabled"
+    },
+    "webAuthnPolicyPasswordlessMediation": {
+      "type": "string",
+      "description": "WebAuthn passwordless credential mediation requirement (silent, optional, conditional, or required)"
+    },
     "defaultLocale": {
       "type": "string",
       "description": "Default locale for the realm"
@@ -651,6 +737,16 @@
         "type": "string"
       },
       "description": "List of supported locales"
+    },
+    "localizationTexts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "description": "Realm localization texts, keyed by locale"
     },
     "loginTheme": {
       "type": "string",
@@ -667,10 +763,6 @@
     "emailTheme": {
       "type": "string",
       "description": "Email theme name"
-    },
-    "loginTheme": {
-      "type": "string",
-      "description": "Login theme name"
     },
     "notafter": {
       "type": "integer",
