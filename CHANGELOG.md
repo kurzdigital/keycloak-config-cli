@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Add support for Keycloak 26.7. The default build now targets Keycloak 26.7.2 (server version property, `default-keycloak-version` profile, `.env`, and Docker build arg), normalization baselines for 26.7.0 and 26.7.2 are included, and 26.7.2 is covered by the CI matrix.
 
 ### Changed
-- Update `keycloak-admin-client` to 26.0.12, which models the realm fields introduced up to Keycloak 26.7 (`webAuthnPolicyResidentKey`, `webAuthnPolicyPasswordlessResidentKey`, `maxSecondaryAuthFailures`, `scimApiEnabled`), so they are imported and normalized instead of being ignored.
+- Update `keycloak-admin-client` to 26.0.12 and pin `keycloak-client-common-synced` to the same version. The representation classes live in the latter artifact, which the imported `keycloak-parent` BOM transitively pinned to an older client release, so raising the client version alone left the representations behind. Together the two changes model the realm fields introduced by Keycloak 26.7 (`webAuthnPolicyResidentKey`, `webAuthnPolicyPasswordlessResidentKey`, `webAuthnPolicyPasswordlessMediation`), so they are imported and normalized instead of being ignored.
 
 ### Fixed
 - Fix the `default-keycloak-client-version` profile still pinning `keycloak-admin-client` 26.0.8, which silently overrode the `keycloak.client.version` property for any build that did not pass `-Dkeycloak.client.version` explicitly.

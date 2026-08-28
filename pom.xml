@@ -149,6 +149,20 @@
                 <artifactId>keycloak-authz-client</artifactId>
                 <version>${keycloak.client.version}</version>
             </dependency>
+            <!--
+              The representation classes (RealmRepresentation and friends) do not live in
+              keycloak-admin-client but in keycloak-client-common-synced, which the admin client
+              pulls in transitively. The keycloak-parent BOM imported below transitively imports
+              quarkus-bom, which pins keycloak-client-common-synced to whatever client release the
+              server line was built against - so without this entry, raising
+              keycloak.client.version raises the admin client but leaves the representations
+              behind, and realm fields added by a newer client are silently unbindable.
+            -->
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-client-common-synced</artifactId>
+                <version>${keycloak.client.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>org.keycloak</groupId>
