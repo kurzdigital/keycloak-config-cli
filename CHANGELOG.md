@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### Fixed
+- Fix the admin client sending every unset representation property as an explicit `null`. The custom `JacksonProvider` only disabled `FAIL_ON_UNKNOWN_PROPERTIES` and did not set `NON_NULL` like the official Keycloak admin-client provider does, so each request body carried all ~150 fields of e.g. `RealmRepresentation`. A Keycloak server rejects a body containing a property it does not know regardless of its value, so as soon as the admin client models a field newer than the server (`webAuthnPolicyResidentKey` from 26.7 against a 26.6 server, for instance) every realm create and update failed with HTTP 400. Unset properties are now omitted from the wire, matching the official provider.
 - Fix Keycloak FGAP version detection using wrong feature names [#1610](https://github.com/adorsys/keycloak-config-cli/issues/1610)
 
 ## [6.5.1] - 2026-05-22

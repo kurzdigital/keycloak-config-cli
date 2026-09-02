@@ -20,6 +20,7 @@
 
 package de.adorsys.keycloak.config.provider;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.adorsys.keycloak.config.exception.KeycloakProviderException;
@@ -411,15 +412,25 @@ public class KeycloakProvider implements AutoCloseable {
      * Matches the official Keycloak admin-client JacksonProvider implementation:
      * https://github.com/keycloak/keycloak/blob/main/integration/admin-client/src/main/java/org/keycloak/admin/client/JacksonProvider.java
      *
-     * FAIL_ON_UNKNOWN_PROPERTIES=false is required for backward compatibility
-     * with different Keycloak server versions per Keycloak documentation:
-     * https://www.keycloak.org/securing-apps/admin-client#_admin_client_compatibility
+     * Both settings are required for compatibility across Keycloak server versions
+     * (https://www.keycloak.org/securing-apps/admin-client#_admin_client_compatibility):
+     * FAIL_ON_UNKNOWN_PROPERTIES=false lets responses from a newer server deserialize,
+     * and NON_NULL keeps unset properties off the wire — the server rejects a request
+     * body containing a property it does not know ("Unrecognized field") even when the
+     * value is null, so a client modelling fields newer than the server must not send them.
+     *
+     * Unlike the official provider, NON_NULL is applied to properties only, not to map
+     * contents: ClientImportService clears authenticationFlowBindingOverrides by sending
+     * the existing keys with null values, which the server treats as "remove override".
      */
     public static class JacksonProvider extends ResteasyJackson2Provider {
 
         @Override
         public ObjectMapper locateMapper(Class<?> type, MediaType mediaType) {
             ObjectMapper objectMapper = super.locateMapper(type, mediaType);
+            objectMapper.setDefaultPropertyInclusion(
+                    JsonInclude.Value.construct(JsonInclude.Include.NON_NULL, JsonInclude.Include.ALWAYS)
+            );
             objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             return objectMapper;
         }
