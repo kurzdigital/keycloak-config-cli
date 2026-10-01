@@ -7,7 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### Added
-- Add support for Keycloak 26.7. The default build now targets Keycloak 26.7.5 (server version property, `default-keycloak-version` profile, `.env`, and Docker build arg), normalization baselines for 26.7.0, 26.7.2, 26.7.3, 26.7.4 and 26.7.5 are included, and 26.7.2, 26.7.3 and 26.7.5 are covered by the CI matrix.
+- Add support for Keycloak 26.7. Normalization baselines for 26.7.0, 26.7.2, 26.7.3, 26.7.4 and 26.7.5 are included, and 26.7.2, 26.7.3 and 26.7.5 are covered by the CI matrix.
+- Add support for Keycloak 26.8. The default build now targets Keycloak 26.8.0 (server version property, `default-keycloak-version` profile and Docker build arg), a normalization baseline for 26.8.0 is included, and 26.8.0 is covered by the CI matrix. Known limitation: Keycloak 26.8 moved identity provider routing onto organization domains (`identityProviderAlias`, `autoRedirect`), which the pinned admin client does not model yet, so any organization update clears the routing of its domains.
 
 ### Changed
 - Update `keycloak-admin-client` to 26.0.12 and pin `keycloak-client-common-synced` to the same version. The representation classes live in the latter artifact, which the imported `keycloak-parent` BOM transitively pinned to an older client release, so raising the client version alone left the representations behind. Together the two changes model the realm fields introduced by Keycloak 26.7 (`webAuthnPolicyResidentKey`, `webAuthnPolicyPasswordlessResidentKey`, `webAuthnPolicyPasswordlessMediation`), so they are imported and normalized instead of being ignored.
