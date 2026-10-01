@@ -21,6 +21,12 @@
 package de.adorsys.keycloak.config.repository;
 
 import de.adorsys.keycloak.config.condition.ConditionalOnKeycloakVersion26OrNewer;
+import de.adorsys.keycloak.config.exception.KeycloakRepositoryException;
+import de.adorsys.keycloak.config.model.OrganizationIdentityProviderLinkRepresentation;
+import de.adorsys.keycloak.config.model.OrganizationIdentityProviderLinksRepresentation;
+import de.adorsys.keycloak.config.model.OrganizationImport;
+import de.adorsys.keycloak.config.provider.KeycloakProvider;
+import de.adorsys.keycloak.config.resource.OrganizationsCompatResource;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.resource.OrganizationIdentityProviderResource;
 import org.keycloak.admin.client.resource.OrganizationMemberResource;
@@ -50,9 +56,11 @@ public class OrganizationRepository {
     private static final Logger logger = LoggerFactory.getLogger(OrganizationRepository.class);
 
     private final RealmRepository realmRepository;
+    private final KeycloakProvider keycloakProvider;
 
-    public OrganizationRepository(RealmRepository realmRepository) {
+    public OrganizationRepository(RealmRepository realmRepository, KeycloakProvider keycloakProvider) {
         this.realmRepository = realmRepository;
+        this.keycloakProvider = keycloakProvider;
     }
 
     public List<OrganizationRepresentation> getAll(String realmName) {
@@ -66,10 +74,10 @@ public class OrganizationRepository {
                 .findFirst();
     }
 
-    public OrganizationRepresentation getByAlias(String realmName, String alias) {
+    public OrganizationImport getByAlias(String realmName, String alias) {
         OrganizationRepresentation org = search(realmName, alias)
                 .orElseThrow(() -> new NotFoundException("Organization with alias '" + alias + "' not found"));
-        return getResourceById(realmName, org.getId()).toRepresentation();
+        return getCompatResource().getOrganization(realmName, org.getId());
     }
 
     public void create(String realmName, OrganizationRepresentation organization) {
@@ -80,9 +88,9 @@ public class OrganizationRepository {
         }
     }
 
-    public void update(String realmName, OrganizationRepresentation organization) {
-        OrganizationResource resource = getResourceById(realmName, organization.getId());
-        try (Response ignored = resource.update(organization)) {
+    public void update(String realmName, OrganizationImport organization) {
+        try (Response response = getCompatResource().updateOrganization(realmName, organization.getId(), organization)) {
+            requireSuccess(response, "update organization '" + organization.getAlias() + "'");
             logger.debug("Updated organization '{}'", organization.getAlias());
         }
     }
@@ -112,6 +120,30 @@ public class OrganizationRepository {
         OrganizationIdentityProviderResource idpResource = resource.identityProviders().get(idpAlias);
         try (Response response = idpResource.delete()) {
             logger.debug("Removed identity provider '{}' from organization '{}' (status={})", idpAlias, organizationId, response.getStatus());
+        }
+    }
+
+    /**
+     * Returns the link settings between the organization and the identity provider, or
+     * {@code null} when the server does not report them (Keycloak before 26.8).
+     */
+    public OrganizationIdentityProviderLinkRepresentation getIdentityProviderLink(
+            String realmName, String organizationId, String idpAlias) {
+        OrganizationIdentityProviderLinksRepresentation idp =
+                getCompatResource().getIdentityProvider(realmName, organizationId, idpAlias);
+        if (idp.getOrganizationLinks() == null) return null;
+
+        return idp.getOrganizationLinks().stream()
+                .filter(link -> organizationId.equals(link.getOrganizationId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public void updateIdentityProviderLink(
+            String realmName, String organizationId, String idpAlias, OrganizationIdentityProviderLinkRepresentation link) {
+        try (Response response = getCompatResource().updateIdentityProviderLink(realmName, organizationId, idpAlias, link)) {
+            requireSuccess(response, "update link of identity provider '" + idpAlias + "' in organization '" + organizationId + "'");
+            logger.debug("Updated link of identity provider '{}' in organization '{}'", idpAlias, organizationId);
         }
     }
 
@@ -149,6 +181,17 @@ public class OrganizationRepository {
         allOrganizations.addAll(onePage);
 
         return allOrganizations;
+    }
+
+    private OrganizationsCompatResource getCompatResource() {
+        return keycloakProvider.getCustomApiProxy(OrganizationsCompatResource.class);
+    }
+
+    private static void requireSuccess(Response response, String action) {
+        if (response.getStatusInfo().getFamily() != Response.Status.Family.SUCCESSFUL) {
+            throw new KeycloakRepositoryException("Cannot %s: HTTP %d %s",
+                    action, response.getStatus(), response.readEntity(String.class));
+        }
     }
 
     private OrganizationsResource getOrganizationsResource(String realmName) {

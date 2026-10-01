@@ -20,14 +20,20 @@
 
 package de.adorsys.keycloak.config.service;
 
+import de.adorsys.keycloak.config.model.OrganizationDomainImport;
+import de.adorsys.keycloak.config.model.OrganizationIdentityProviderLinkRepresentation;
+import de.adorsys.keycloak.config.model.OrganizationImport;
 import de.adorsys.keycloak.config.model.RealmImport;
 import de.adorsys.keycloak.config.properties.ImportConfigProperties;
 import de.adorsys.keycloak.config.repository.OrganizationRepository;
 import de.adorsys.keycloak.config.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.keycloak.representations.idm.IdentityProviderRepresentation;
 import org.keycloak.representations.idm.MemberRepresentation;
+import org.keycloak.representations.idm.OrganizationDomainRepresentation;
 import org.keycloak.representations.idm.OrganizationRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 
@@ -41,6 +47,13 @@ import static de.adorsys.keycloak.config.properties.ImportConfigProperties.Impor
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -109,7 +122,7 @@ class OrganizationImportServiceTest {
         when(organizationRepository.getAll("test")).thenReturn(List.of(existing));
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.empty());
 
-        OrganizationRepresentation created = new OrganizationRepresentation();
+        OrganizationImport created = new OrganizationImport();
         created.setAlias("org-a");
         created.setId("org-a-id");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(created);
@@ -138,7 +151,7 @@ class OrganizationImportServiceTest {
         when(organizationRepository.getAll("test")).thenReturn(Collections.emptyList());
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.empty());
 
-        OrganizationRepresentation created = new OrganizationRepresentation();
+        OrganizationImport created = new OrganizationImport();
         created.setAlias("org-a");
         created.setId("org-a-id");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(created);
@@ -176,7 +189,7 @@ class OrganizationImportServiceTest {
         existing.setDescription("old-desc");
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.of(existing));
 
-        OrganizationRepresentation resolved = new OrganizationRepresentation();
+        OrganizationImport resolved = new OrganizationImport();
         resolved.setId("org-a-id");
         resolved.setAlias("org-a");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(resolved);
@@ -195,7 +208,7 @@ class OrganizationImportServiceTest {
 
         service.doImport(realmImport);
 
-        verify(organizationRepository, times(1)).update(eq("test"), any(OrganizationRepresentation.class));
+        verify(organizationRepository, times(1)).update(eq("test"), any(OrganizationImport.class));
         verify(organizationRepository, times(1)).addIdentityProvider(eq("test"), eq("org-a-id"), eq("idp-a"));
         verify(organizationRepository, times(1)).addMember(eq("test"), eq("org-a-id"), eq("alice-id"));
     }
@@ -214,7 +227,7 @@ class OrganizationImportServiceTest {
         when(organizationRepository.getAll("test")).thenReturn(Collections.emptyList());
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.empty());
 
-        OrganizationRepresentation created = new OrganizationRepresentation();
+        OrganizationImport created = new OrganizationImport();
         created.setAlias("org-a");
         created.setId("org-a-id");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(created);
@@ -248,7 +261,7 @@ class OrganizationImportServiceTest {
         existing.setAlias("org-a");
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.of(existing));
 
-        OrganizationRepresentation resolved = new OrganizationRepresentation();
+        OrganizationImport resolved = new OrganizationImport();
         resolved.setId("org-a-id");
         resolved.setAlias("org-a");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(resolved);
@@ -278,7 +291,7 @@ class OrganizationImportServiceTest {
         existing.setAlias("org-a");
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.of(existing));
 
-        OrganizationRepresentation resolved = new OrganizationRepresentation();
+        OrganizationImport resolved = new OrganizationImport();
         resolved.setId("org-a-id");
         resolved.setAlias("org-a");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(resolved);
@@ -288,7 +301,7 @@ class OrganizationImportServiceTest {
 
         service.doImport(realmImport);
 
-        verify(organizationRepository, never()).update(eq("test"), any(OrganizationRepresentation.class));
+        verify(organizationRepository, never()).update(eq("test"), any(OrganizationImport.class));
     }
 
     @Test
@@ -305,7 +318,7 @@ class OrganizationImportServiceTest {
         when(organizationRepository.getAll("test")).thenReturn(Collections.emptyList());
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.empty());
 
-        OrganizationRepresentation created = new OrganizationRepresentation();
+        OrganizationImport created = new OrganizationImport();
         created.setAlias("org-a");
         created.setId("org-a-id");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(created);
@@ -341,7 +354,7 @@ class OrganizationImportServiceTest {
         when(organizationRepository.getAll("test")).thenReturn(Collections.emptyList());
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.empty());
 
-        OrganizationRepresentation created = new OrganizationRepresentation();
+        OrganizationImport created = new OrganizationImport();
         created.setAlias("org-a");
         created.setId("org-a-id");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(created);
@@ -377,7 +390,7 @@ class OrganizationImportServiceTest {
         when(organizationRepository.getAll("test")).thenReturn(Collections.emptyList());
         when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.empty());
 
-        OrganizationRepresentation created = new OrganizationRepresentation();
+        OrganizationImport created = new OrganizationImport();
         created.setAlias("org-a");
         created.setId("org-a-id");
         when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(created);
@@ -394,5 +407,148 @@ class OrganizationImportServiceTest {
         service.doImport(realmImport);
 
         verify(organizationRepository, never()).addMember(eq("test"), eq("org-a-id"), anyString());
+    }
+
+    @Test
+    void doImport_shouldKeepDomainRoutingWhenImportOmitsIt() {
+        stubExistingOrganization(routedDomain("acme.com", "github", true));
+
+        service.doImport(realmImportWith(Map.of(
+                "alias", "org-a",
+                "description", "changed",
+                "domains", List.of(Map.of("name", "acme.com"))
+        )));
+
+        OrganizationDomainImport domain = (OrganizationDomainImport) captureUpdate().getDomain("acme.com");
+        assertThat(domain.getIdentityProviderAlias(), is("github"));
+        assertThat(domain.getAutoRedirect(), is(true));
+    }
+
+    @Test
+    void doImport_shouldRemoveDomainRoutingOnEmptyAlias() {
+        stubExistingOrganization(routedDomain("acme.com", "github", true));
+
+        service.doImport(realmImportWith(Map.of(
+                "alias", "org-a",
+                "domains", List.of(Map.of("name", "acme.com", "identityProviderAlias", "", "autoRedirect", false))
+        )));
+
+        OrganizationDomainImport domain = (OrganizationDomainImport) captureUpdate().getDomain("acme.com");
+        assertThat(domain.getIdentityProviderAlias(), is(nullValue()));
+        assertThat(domain.getAutoRedirect(), is(false));
+    }
+
+    @Test
+    void doImport_shouldNotUpdateWhenRoutingIsUnchanged() {
+        stubExistingOrganization(routedDomain("acme.com", "github", true));
+
+        service.doImport(realmImportWith(Map.of(
+                "alias", "org-a",
+                "domains", List.of(Map.of("name", "acme.com", "identityProviderAlias", "github"))
+        )));
+
+        verify(organizationRepository, never()).update(eq("test"), any(OrganizationImport.class));
+    }
+
+    @Test
+    void doImport_shouldCreateWithoutRoutingAndLinkSettings() {
+        when(organizationRepository.getAll("test")).thenReturn(Collections.emptyList());
+        when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.empty());
+        OrganizationImport created = new OrganizationImport();
+        created.setId("org-a-id");
+        created.setAlias("org-a");
+        when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(created);
+        when(organizationRepository.getIdentityProviders(eq("test"), eq("org-a-id"))).thenReturn(Collections.emptyList());
+        when(organizationRepository.getMembers(eq("test"), eq("org-a-id"))).thenReturn(Collections.emptyList());
+
+        service.doImport(realmImportWith(Map.of(
+                "alias", "org-a",
+                "domains", List.of(Map.of("name", "acme.com", "identityProviderAlias", "idp-a", "autoRedirect", true)),
+                "identityProviders", List.of(Map.of("alias", "idp-a", "membershipType", "MANAGED"))
+        )));
+
+        ArgumentCaptor<OrganizationRepresentation> createCaptor = ArgumentCaptor.forClass(OrganizationRepresentation.class);
+        verify(organizationRepository).create(eq("test"), createCaptor.capture());
+        OrganizationRepresentation sent = createCaptor.getValue();
+        assertThat(sent, not(instanceOf(OrganizationImport.class)));
+        assertThat(sent.getDomains(), everyItem(not(instanceOf(OrganizationDomainImport.class))));
+        assertThat(sent.getIdentityProviders(), is(nullValue()));
+
+        InOrder order = inOrder(organizationRepository);
+        order.verify(organizationRepository).addIdentityProvider("test", "org-a-id", "idp-a");
+        order.verify(organizationRepository).update(eq("test"), any(OrganizationImport.class));
+    }
+
+    @Test
+    void doImport_shouldUpdateIdentityProviderLinkSettings() {
+        stubExistingOrganization();
+        IdentityProviderRepresentation linked = new IdentityProviderRepresentation();
+        linked.setAlias("idp-a");
+        when(organizationRepository.getIdentityProviders(eq("test"), eq("org-a-id"))).thenReturn(List.of(linked));
+        when(organizationRepository.getIdentityProviderLink("test", "org-a-id", "idp-a"))
+                .thenReturn(new OrganizationIdentityProviderLinkRepresentation(true, "UNMANAGED"));
+
+        service.doImport(realmImportWith(Map.of(
+                "alias", "org-a",
+                "identityProviders", List.of(Map.of("alias", "idp-a", "membershipType", "MANAGED"))
+        )));
+
+        ArgumentCaptor<OrganizationIdentityProviderLinkRepresentation> linkCaptor =
+                ArgumentCaptor.forClass(OrganizationIdentityProviderLinkRepresentation.class);
+        verify(organizationRepository).updateIdentityProviderLink(eq("test"), eq("org-a-id"), eq("idp-a"), linkCaptor.capture());
+        assertThat(linkCaptor.getValue().getAutoMembership(), is(true));
+        assertThat(linkCaptor.getValue().getMembershipType(), is("MANAGED"));
+        verify(organizationRepository, never()).addIdentityProvider(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void doImport_shouldSkipIdentityProviderLinkWhenSettingsMatch() {
+        stubExistingOrganization();
+        IdentityProviderRepresentation linked = new IdentityProviderRepresentation();
+        linked.setAlias("idp-a");
+        when(organizationRepository.getIdentityProviders(eq("test"), eq("org-a-id"))).thenReturn(List.of(linked));
+        when(organizationRepository.getIdentityProviderLink("test", "org-a-id", "idp-a"))
+                .thenReturn(new OrganizationIdentityProviderLinkRepresentation(true, "MANAGED"));
+
+        service.doImport(realmImportWith(Map.of(
+                "alias", "org-a",
+                "identityProviders", List.of(Map.of("alias", "idp-a", "membershipType", "MANAGED"))
+        )));
+
+        verify(organizationRepository, never()).updateIdentityProviderLink(anyString(), anyString(), anyString(), any());
+    }
+
+    private RealmImport realmImportWith(Map<String, Object> organization) {
+        RealmImport realmImport = new RealmImport();
+        realmImport.setRealm("test");
+        realmImport.setOrganizationsRaw(List.of(new HashMap<>(organization)));
+        return realmImport;
+    }
+
+    private void stubExistingOrganization(OrganizationDomainRepresentation... domains) {
+        OrganizationImport existing = new OrganizationImport();
+        existing.setId("org-a-id");
+        existing.setAlias("org-a");
+        for (OrganizationDomainRepresentation domain : domains) {
+            existing.addDomain(domain);
+        }
+        when(organizationRepository.search(eq("test"), eq("org-a"))).thenReturn(Optional.of(existing));
+        when(organizationRepository.getByAlias(eq("test"), eq("org-a"))).thenReturn(existing);
+        when(organizationRepository.getIdentityProviders(eq("test"), eq("org-a-id"))).thenReturn(Collections.emptyList());
+        when(organizationRepository.getMembers(eq("test"), eq("org-a-id"))).thenReturn(Collections.emptyList());
+    }
+
+    private static OrganizationDomainImport routedDomain(String name, String idpAlias, boolean autoRedirect) {
+        OrganizationDomainImport domain = new OrganizationDomainImport();
+        domain.setName(name);
+        domain.setIdentityProviderAlias(idpAlias);
+        domain.setAutoRedirect(autoRedirect);
+        return domain;
+    }
+
+    private OrganizationImport captureUpdate() {
+        ArgumentCaptor<OrganizationImport> captor = ArgumentCaptor.forClass(OrganizationImport.class);
+        verify(organizationRepository).update(eq("test"), captor.capture());
+        return captor.getValue();
     }
 }

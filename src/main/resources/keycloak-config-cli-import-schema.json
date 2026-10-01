@@ -1951,6 +1951,97 @@
         }
       }
     },
+    "OrganizationIdentityProviderRepresentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Provider ID"
+        },
+        "alias": {
+          "type": "string",
+          "description": "Provider alias"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "internalId": {
+          "type": "string",
+          "description": "Internal ID"
+        },
+        "providerId": {
+          "type": "string",
+          "description": "Provider type (keycloak-oidc, facebook, google, etc.)"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Is enabled"
+        },
+        "updateProfileFirstLoginMode": {
+          "type": "string",
+          "deprecated": true
+        },
+        "trustEmail": {
+          "type": "boolean",
+          "description": "Trust email from provider"
+        },
+        "storeToken": {
+          "type": "boolean",
+          "description": "Store token"
+        },
+        "addReadTokenRoleOnCreate": {
+          "type": "boolean",
+          "description": "Add read token role on create"
+        },
+        "authenticateByDefault": {
+          "type": "boolean",
+          "description": "Authenticate by default"
+        },
+        "linkOnly": {
+          "type": "boolean",
+          "description": "Link only mode"
+        },
+        "hideOnLogin": {
+          "type": "boolean",
+          "description": "Hide on login page"
+        },
+        "firstBrokerLoginFlowAlias": {
+          "type": "string",
+          "description": "First broker login flow alias"
+        },
+        "postBrokerLoginFlowAlias": {
+          "type": "string",
+          "description": "Post broker login flow alias"
+        },
+        "organizationId": {
+          "type": "string",
+          "description": "Organization ID"
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Provider configuration"
+        },
+        "updateProfileFirstLogin": {
+          "type": "boolean",
+          "deprecated": true
+        },
+        "autoMembership": {
+          "type": "boolean",
+          "description": "Add users brokered through this identity provider to the organization automatically (Keycloak 26.8+). Omit to keep the current setting"
+        },
+        "membershipType": {
+          "type": "string",
+          "enum": ["MANAGED", "UNMANAGED"],
+          "description": "Membership type of users added through this identity provider (Keycloak 26.8+). MANAGED requires autoMembership. Omit to keep the current setting"
+        }
+      },
+      "description": "Identity provider linked to an organization, with the per-link membership settings"
+    },
     "IdentityProviderMapperRepresentation": {
       "type": "object",
       "additionalProperties": false,
@@ -2258,7 +2349,7 @@
         "identityProviders": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/IdentityProviderRepresentation"
+            "$ref": "#/definitions/OrganizationIdentityProviderRepresentation"
           },
           "description": "Identity providers"
         }
@@ -2275,6 +2366,14 @@
         "verified": {
           "type": "boolean",
           "description": "Is verified"
+        },
+        "identityProviderAlias": {
+          "type": "string",
+          "description": "Identity provider that users with this email domain are routed to (Keycloak 26.8+). The identity provider must be linked to the organization. Omit to keep the current routing, use an empty string to remove it"
+        },
+        "autoRedirect": {
+          "type": "boolean",
+          "description": "Redirect users with this email domain to the routed identity provider automatically (Keycloak 26.8+). Omit to keep the current setting"
         }
       }
     },

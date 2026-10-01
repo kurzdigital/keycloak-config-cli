@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### Fixed
+- Support the organization changes of Keycloak 26.8, which the pinned admin client does not model yet. Organization domains accept `identityProviderAlias` and `autoRedirect` (identity provider routing), and the organization's `identityProviders` entries accept `autoMembership` and `membershipType` (per-link membership settings). Keycloak resets the routing of every domain in an organization update that omits it, so previously any changed organization import cleared routing set in the admin console or migrated by the 26.8 upgrade. Unset fields now keep the server's value, and an empty `identityProviderAlias` removes routing. Identity providers are linked before the organization update, because routing may only point at linked identity providers. Fields left unset are never sent, so servers before 26.8 are unaffected.
 - Fix Keycloak FGAP version detection using wrong feature names [#1610](https://github.com/adorsys/keycloak-config-cli/issues/1610)
 
 ## [6.5.1] - 2026-05-22

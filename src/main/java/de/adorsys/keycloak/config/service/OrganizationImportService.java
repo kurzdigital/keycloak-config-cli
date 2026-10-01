@@ -21,6 +21,10 @@
 package de.adorsys.keycloak.config.service;
 
 import de.adorsys.keycloak.config.condition.ConditionalOnKeycloakVersion26OrNewer;
+import de.adorsys.keycloak.config.model.OrganizationDomainImport;
+import de.adorsys.keycloak.config.model.OrganizationIdentityProviderImport;
+import de.adorsys.keycloak.config.model.OrganizationIdentityProviderLinkRepresentation;
+import de.adorsys.keycloak.config.model.OrganizationImport;
 import de.adorsys.keycloak.config.model.RealmImport;
 import de.adorsys.keycloak.config.properties.ImportConfigProperties;
 import de.adorsys.keycloak.config.repository.OrganizationRepository;
@@ -28,6 +32,7 @@ import de.adorsys.keycloak.config.repository.UserRepository;
 import de.adorsys.keycloak.config.util.CloneUtil;
 import org.keycloak.representations.idm.IdentityProviderRepresentation;
 import org.keycloak.representations.idm.MemberRepresentation;
+import org.keycloak.representations.idm.OrganizationDomainRepresentation;
 import org.keycloak.representations.idm.OrganizationRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.slf4j.Logger;
@@ -90,7 +95,7 @@ public class OrganizationImportService {
         if (raw == null) return null;
 
         return raw.stream()
-                .map(r -> CloneUtil.deepClone(r, OrganizationRepresentation.class))
+                .map(r -> CloneUtil.deepClone(r, OrganizationImport.class))
                 .collect(Collectors.toList());
     }
 
@@ -122,34 +127,42 @@ public class OrganizationImportService {
     private void createOrUpdateOrganization(String realmName, OrganizationRepresentation organization) {
         String organizationAlias = organization.getAlias();
 
-        Optional<OrganizationRepresentation> maybeOrganization = organizationRepository.search(realmName, organizationAlias);
-
-        if (maybeOrganization.isPresent()) {
-            OrganizationRepresentation existingOrganization = maybeOrganization.get();
-            updateOrganizationIfNecessary(realmName, organization, existingOrganization);
-
-            OrganizationRepresentation resolved = organizationRepository.getByAlias(realmName, organizationAlias);
-            manageIdentityProviderAssociations(realmName, resolved.getId(), organization);
-            manageMemberships(realmName, resolved.getId(), organization);
-        } else {
+        if (organizationRepository.search(realmName, organizationAlias).isEmpty()) {
             logger.debug("Create organization '{}' in realm '{}'", organizationAlias, realmName);
-            organizationRepository.create(realmName, organization);
-
-            OrganizationRepresentation created = organizationRepository.getByAlias(realmName, organizationAlias);
-            manageIdentityProviderAssociations(realmName, created.getId(), organization);
-            manageMemberships(realmName, created.getId(), organization);
+            organizationRepository.create(realmName, withoutLinkedData(organization));
         }
+
+        // Domain routing may only point at identity providers already linked to the organization,
+        // so links are added before the organization update and removed after it.
+        OrganizationImport existing = organizationRepository.getByAlias(realmName, organizationAlias);
+        linkIdentityProviders(realmName, existing.getId(), organization);
+        updateOrganizationIfNecessary(realmName, organization, existing);
+        unlinkIdentityProviders(realmName, existing.getId(), organization);
+        manageMemberships(realmName, existing.getId(), organization);
+    }
+
+    /**
+     * The organization as accepted by the create endpoint: identity providers and members are
+     * managed through their own endpoints, and domain routing needs linked identity providers,
+     * so it is applied by the update that follows. Cloning into the plain representation drops
+     * every field the admin client does not model.
+     */
+    private OrganizationRepresentation withoutLinkedData(OrganizationRepresentation organization) {
+        return CloneUtil.deepClone(organization, OrganizationRepresentation.class, "identityProviders", "members");
     }
 
     private void updateOrganizationIfNecessary(
             String realmName,
             OrganizationRepresentation organization,
-            OrganizationRepresentation existingOrganization
+            OrganizationImport existingOrganization
     ) {
-        OrganizationRepresentation patched = CloneUtil.patch(existingOrganization, organization, "id");
+        OrganizationImport patched = CloneUtil.patch(existingOrganization, organization, "id", "identityProviders", "members");
         patched.setId(existingOrganization.getId());
+        patched.setIdentityProviders(null);
+        patched.setMembers(null);
+        keepUnsetDomainRouting(patched, existingOrganization);
 
-        if (CloneUtil.deepEquals(existingOrganization, patched)) {
+        if (CloneUtil.deepEquals(existingOrganization, patched, "identityProviders", "members")) {
             logger.debug("No need to update organization '{}' in realm '{}'", existingOrganization.getAlias(), realmName);
         } else {
             logger.debug("Update organization '{}' in realm '{}'", existingOrganization.getAlias(), realmName);
@@ -157,64 +170,117 @@ public class OrganizationImportService {
         }
     }
 
+    /**
+     * Keycloak resets the routing of every domain in an organization update that omits it. A
+     * domain without routing fields in the import therefore keeps the routing the server has
+     * (set in the admin console, or migrated from the identity provider config by the 26.8
+     * upgrade); an empty {@code identityProviderAlias} removes it explicitly.
+     */
+    private void keepUnsetDomainRouting(OrganizationImport patched, OrganizationImport existing) {
+        if (patched.getDomains() == null) return;
+
+        for (OrganizationDomainRepresentation domain : patched.getDomains()) {
+            if (!(domain instanceof OrganizationDomainImport routed)) continue;
+
+            OrganizationDomainRepresentation existingDomain = existing.getDomain(domain.getName());
+            OrganizationDomainImport existingRouting = existingDomain instanceof OrganizationDomainImport e ? e : null;
+
+            if (routed.getIdentityProviderAlias() == null && existingRouting != null) {
+                routed.setIdentityProviderAlias(existingRouting.getIdentityProviderAlias());
+            } else if ("".equals(routed.getIdentityProviderAlias())) {
+                routed.setIdentityProviderAlias(null);
+            }
+            if (routed.getAutoRedirect() == null && existingRouting != null) {
+                routed.setAutoRedirect(existingRouting.getAutoRedirect());
+            }
+        }
+    }
+
     private boolean hasOrganizationWithAlias(List<OrganizationRepresentation> organizations, String alias) {
         return organizations.stream().anyMatch(org -> Objects.equals(org.getAlias(), alias));
     }
 
-    private void manageIdentityProviderAssociations(
-            String realmName,
-            String orgId,
-            OrganizationRepresentation organization
-    ) {
+    private void linkIdentityProviders(String realmName, String orgId, OrganizationRepresentation organization) {
         List<IdentityProviderRepresentation> idpsToAssociate = organization.getIdentityProviders();
-        List<IdentityProviderRepresentation> existingIdps = organizationRepository.getIdentityProviders(realmName, orgId);
-        Set<String> existingAliases = existingIdps.stream()
-                .map(IdentityProviderRepresentation::getAlias)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        if (idpsToAssociate == null || idpsToAssociate.isEmpty()) return;
 
-        if (idpsToAssociate == null || idpsToAssociate.isEmpty()) {
-            if (importConfigProperties.getManaged().getOrganization() == ImportManagedPropertiesValues.FULL) {
-                for (String existingAlias : existingAliases) {
-                    try {
-                        organizationRepository.removeIdentityProvider(realmName, orgId, existingAlias);
-                    } catch (NotFoundException | BadRequestException e) {
-                        logger.warn("Failed to remove identity provider '{}' from organization '{}': {}",
-                                existingAlias, organization.getAlias(), e.getMessage());
-                    }
+        Set<String> existingAliases = getLinkedAliases(realmName, orgId);
+
+        for (IdentityProviderRepresentation idp : idpsToAssociate) {
+            String idpAlias = idp.getAlias();
+            if (idpAlias == null) continue;
+
+            try {
+                if (!existingAliases.contains(idpAlias)) {
+                    organizationRepository.addIdentityProvider(realmName, orgId, idpAlias);
                 }
+                if (idp instanceof OrganizationIdentityProviderImport link) {
+                    updateIdentityProviderLinkIfNecessary(realmName, orgId, organization.getAlias(), link);
+                }
+            } catch (NotFoundException | BadRequestException e) {
+                logger.warn("Failed to associate identity provider '{}' with organization '{}': {}",
+                        idpAlias, organization.getAlias(), e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Applies {@code autoMembership} / {@code membershipType} of a link (Keycloak 26.8+). The
+     * server resets an omitted setting to its default, so unset values are filled from the
+     * current link before sending.
+     */
+    private void updateIdentityProviderLinkIfNecessary(
+            String realmName, String orgId, String orgAlias, OrganizationIdentityProviderImport idp) {
+        if (idp.getAutoMembership() == null && idp.getMembershipType() == null) return;
+
+        OrganizationIdentityProviderLinkRepresentation current =
+                organizationRepository.getIdentityProviderLink(realmName, orgId, idp.getAlias());
+        if (current == null) {
+            logger.warn("Identity provider '{}' of organization '{}' declares autoMembership/membershipType, "
+                    + "but the server does not support link settings (Keycloak 26.8+). Ignored.", idp.getAlias(), orgAlias);
             return;
         }
 
-        Set<String> configuredAliases = idpsToAssociate.stream()
+        OrganizationIdentityProviderLinkRepresentation wanted = new OrganizationIdentityProviderLinkRepresentation(
+                idp.getAutoMembership() != null ? idp.getAutoMembership() : current.getAutoMembership(),
+                idp.getMembershipType() != null ? idp.getMembershipType() : current.getMembershipType()
+        );
+
+        if (Objects.equals(wanted.getAutoMembership(), current.getAutoMembership())
+                && Objects.equals(wanted.getMembershipType(), current.getMembershipType())) {
+            return;
+        }
+
+        logger.debug("Update link of identity provider '{}' in organization '{}'", idp.getAlias(), orgAlias);
+        organizationRepository.updateIdentityProviderLink(realmName, orgId, idp.getAlias(), wanted);
+    }
+
+    private void unlinkIdentityProviders(String realmName, String orgId, OrganizationRepresentation organization) {
+        if (importConfigProperties.getManaged().getOrganization() != ImportManagedPropertiesValues.FULL) return;
+
+        Set<String> configuredAliases = organization.getIdentityProviders() == null ? Set.of()
+                : organization.getIdentityProviders().stream()
                 .map(IdentityProviderRepresentation::getAlias)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        for (String idpAlias : configuredAliases) {
-            if (!existingAliases.contains(idpAlias)) {
-                try {
-                    organizationRepository.addIdentityProvider(realmName, orgId, idpAlias);
-                } catch (NotFoundException | BadRequestException e) {
-                    logger.warn("Failed to associate identity provider '{}' with organization '{}': {}",
-                            idpAlias, organization.getAlias(), e.getMessage());
-                }
-            }
-        }
+        for (String existingAlias : getLinkedAliases(realmName, orgId)) {
+            if (configuredAliases.contains(existingAlias)) continue;
 
-        if (importConfigProperties.getManaged().getOrganization() == ImportManagedPropertiesValues.FULL) {
-            for (String existingAlias : existingAliases) {
-                if (!configuredAliases.contains(existingAlias)) {
-                    try {
-                        organizationRepository.removeIdentityProvider(realmName, orgId, existingAlias);
-                    } catch (NotFoundException | BadRequestException e) {
-                        logger.warn("Failed to remove identity provider '{}' from organization '{}': {}",
-                                existingAlias, organization.getAlias(), e.getMessage());
-                    }
-                }
+            try {
+                organizationRepository.removeIdentityProvider(realmName, orgId, existingAlias);
+            } catch (NotFoundException | BadRequestException e) {
+                logger.warn("Failed to remove identity provider '{}' from organization '{}': {}",
+                        existingAlias, organization.getAlias(), e.getMessage());
             }
         }
+    }
+
+    private Set<String> getLinkedAliases(String realmName, String orgId) {
+        return organizationRepository.getIdentityProviders(realmName, orgId).stream()
+                .map(IdentityProviderRepresentation::getAlias)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
     }
 
     private void manageMemberships(
