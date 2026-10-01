@@ -48,4 +48,16 @@ public class OrganizationDomainImport extends OrganizationDomainRepresentation {
     public void setAutoRedirect(Boolean autoRedirect) {
         this.autoRedirect = autoRedirect;
     }
+
+    // A domain is identified by its name alone, routing included: the organization keeps its
+    // domains in a set, and an import must replace a domain rather than add a second one.
+    @Override
+    public boolean equals(Object o) {
+        return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
+    }
 }
