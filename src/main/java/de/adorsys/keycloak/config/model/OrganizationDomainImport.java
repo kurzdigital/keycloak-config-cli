@@ -51,13 +51,16 @@ public class OrganizationDomainImport extends OrganizationDomainRepresentation {
 
     // A domain is identified by its name alone, routing included: the organization keeps its
     // domains in a set, and an import must replace a domain rather than add a second one.
+    // Mirrors OrganizationDomainRepresentation so plain and routed domains compare alike.
     @Override
     public boolean equals(Object o) {
-        return super.equals(o);
+        if (this == o) return true;
+        if (!(o instanceof OrganizationDomainRepresentation other)) return false;
+        return getName() != null && getName().equals(other.getName());
     }
 
     @Override
     public int hashCode() {
-        return super.hashCode();
+        return getName() == null ? System.identityHashCode(this) : getName().hashCode();
     }
 }
